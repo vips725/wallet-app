@@ -22,5 +22,4 @@ public class ProfileController {
             ProfileDTO registeredProfile = profileService.registerProfile(profileDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(registeredProfile);
         }
-
 }
