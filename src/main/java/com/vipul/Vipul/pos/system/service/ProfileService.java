@@ -3,7 +3,10 @@ import com.vipul.Vipul.pos.system.dto.ProfileDTO;
 import com.vipul.Vipul.pos.system.entity.ProfileEntity;
 import com.vipul.Vipul.pos.system.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import java.util.UUID;
 
 @Service
@@ -11,6 +14,7 @@ import java.util.UUID;
 public class ProfileService {
     private final ProfileRepository profileRepository;
     private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
 
     public ProfileDTO registerProfile(ProfileDTO profileDTO) {
         ProfileEntity newProfile = toEntity(profileDTO);
@@ -28,7 +32,7 @@ public class ProfileService {
         return ProfileEntity.builder()
                 .id(profileDTO.getId())
                 .fullName(profileDTO.getFullName())
-                .email(profileDTO.getEmail())
+                .email(passwordEncoder.encode(profileDTO.getEmail()))
                 .password(profileDTO.getPassword())
                 .profileImageUrl(profileDTO.getProfileImageUrl())
                 .createdAt(profileDTO.getCreatedAt())
@@ -44,5 +48,14 @@ public class ProfileService {
                 .createdAt(profileEntity.getCreatedAt())
                 .updatedAt(profileEntity.getUpdatedAt())
                 .build();
+    }
+    public boolean activateProfile(@RequestParam String token){
+        return profileRepository.findByActivationToken(token)
+                .map(profileEntity ->{
+                    profileEntity.setIsActive(true);
+                    profileRepository.save(profileEntity);
+                    return true;
+                } )
+                .orElse(false);
     }
 }
