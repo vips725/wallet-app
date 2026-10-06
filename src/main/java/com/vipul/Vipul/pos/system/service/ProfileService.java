@@ -1,8 +1,13 @@
 package com.vipul.Vipul.pos.system.service;
+import com.vipul.Vipul.pos.system.configuration.SecurityConfig;
 import com.vipul.Vipul.pos.system.dto.ProfileDTO;
 import com.vipul.Vipul.pos.system.entity.ProfileEntity;
 import com.vipul.Vipul.pos.system.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -57,5 +62,32 @@ public class ProfileService {
                     return true;
                 } )
                 .orElse(false);
+    }
+    public boolean isAccountActive(String email){
+        return profileRepository.findByEmail(email)
+                .map(ProfileEntity::getIsActive)
+                .orElse(false);
+    }
+    public ProfileEntity getCurrentProfile(){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+       return profileRepository.findByEmail(authentication.getName())
+                .orElseThrow(()->new UsernameNotFoundException("Profile not found with email"+authentication.getName()));
+    }
+    public ProfileDTO getPublicProfile(String email){
+        ProfileEntity currentUser = null;
+        if(email == null){
+            getCurrentProfile();
+        }else {
+            currentUser = profileRepository.findByEmail(email)
+                    .orElseThrow(()->new UsernameNotFoundException("Profile not found with email"+email));
+        }
+        return ProfileDTO.builder()
+                .id(currentUser.getId())
+                .fullName(currentUser.getFullName())
+                .email(currentUser.getEmail())
+                .profileImageUrl(currentUser.getProfileImageUrl())
+                .createdAt(currentUser.getCreatedAt())
+                .updatedAt(currentUser.getUpdatedAt())
+                .build();
     }
 }
