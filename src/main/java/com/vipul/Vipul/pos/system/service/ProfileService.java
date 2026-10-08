@@ -1,9 +1,13 @@
 package com.vipul.Vipul.pos.system.service;
 import com.vipul.Vipul.pos.system.configuration.SecurityConfig;
+import com.vipul.Vipul.pos.system.dto.AuthDTO;
 import com.vipul.Vipul.pos.system.dto.ProfileDTO;
 import com.vipul.Vipul.pos.system.entity.ProfileEntity;
 import com.vipul.Vipul.pos.system.repository.ProfileRepository;
+import com.vipul.Vipul.pos.system.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,7 +15,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,6 +27,8 @@ public class ProfileService {
     private final ProfileRepository profileRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
 
     public ProfileDTO registerProfile(ProfileDTO profileDTO) {
         ProfileEntity newProfile = toEntity(profileDTO);
@@ -37,8 +46,8 @@ public class ProfileService {
         return ProfileEntity.builder()
                 .id(profileDTO.getId())
                 .fullName(profileDTO.getFullName())
-                .email(passwordEncoder.encode(profileDTO.getEmail()))
-                .password(profileDTO.getPassword())
+                .email(profileDTO.getEmail())
+                .password(passwordEncoder.encode(profileDTO.getPassword()))
                 .profileImageUrl(profileDTO.getProfileImageUrl())
                 .createdAt(profileDTO.getCreatedAt())
                 .updatedAt(profileDTO.getUpdatedAt())
@@ -89,5 +98,33 @@ public class ProfileService {
                 .createdAt(currentUser.getCreatedAt())
                 .updatedAt(currentUser.getUpdatedAt())
                 .build();
+    }
+
+    public Map<String, Object> authenticateAndGenerateToken(AuthDTO authDTO) {
+        try {
+
+            Authentication authentication =
+                    authenticationManager.authenticate(
+                            new UsernamePasswordAuthenticationToken(
+                                    authDTO.getEmail(),
+                                    authDTO.getPassword()
+                            )
+                    );
+
+            // Get authenticated user
+            UserDetails userDetails =
+                    (UserDetails) authentication.getPrincipal();
+
+            // Generate JWT
+            String token = jwtUtil.generateToken(userDetails);
+
+            return Map.of(
+                    "token", token,
+                    "user", getPublicProfile(authDTO.getEmail())
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
